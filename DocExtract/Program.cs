@@ -16,6 +16,11 @@ namespace DocExtract
 {
     class Program
     {
+        static string headerStyle = @"    <head><style type='text/css'>" + 
+            "div { position: absolute;height: 80%; width: 80%; top: 10%; left: 10%; }" +
+            "pre {white-space: pre-wrap;  white-space: -moz-pre-wrap;  white-space: -pre-wrap; white-space: -o-pre-wrap; word-wrap: break-word;      }" +
+            "</style></head>";
+
         static void Main(string[] args)
         {
             DirectoryInfo directory = new DirectoryInfo(@"C:\Documentation\");
@@ -61,7 +66,7 @@ namespace DocExtract
                 outputBody.Append("<hr>");
             }
 
-            var html = "<html><body>" + outputBody.ToString() + "</html></body>";
+            var html = $"<html>{headerStyle}<body><div>" + outputBody.ToString() + "</div></body></html>";
             File.WriteAllText(@"C:\temp\doc.html",html);
             Process.Start(@"cmd.exe ", @"/c " + @"C:\temp\doc.html");
         }

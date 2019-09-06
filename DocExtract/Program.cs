@@ -1,8 +1,16 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Web;
 using System.Xml;
+
+
+
 
 namespace DocExtract
 {
@@ -10,19 +18,52 @@ namespace DocExtract
     {
         static void Main(string[] args)
         {
-            var files = new List<string>()
-            {
-                @"C:\Documentation\Oasis Five By Five - General Description.docx",
-                @"C:\Documentation\Mule - Initial Setup.docx",
-                @"C:\Documentation\PhoenixIntegration\Intertek ESB Catalog.docx"
-            };
+            DirectoryInfo directory = new DirectoryInfo(@"C:\Documentation\");
+            FileInfo[] allFiles = directory.GetFiles("*.docx", SearchOption.AllDirectories);
 
-            foreach(var file in files)
+            //Remove hidden files
+            var goodFiles = allFiles.Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden)).OrderBy(f => f.Name);
+
+            StringBuilder outputBody = new StringBuilder();
+
+            //Build an Index
+            outputBody.Append("<h1>Index</h1>");
+            foreach (var file in goodFiles)
             {
-                string content = TextFromWord(file);
-                var x = "breakpoint";
+                var name = Path.GetFileNameWithoutExtension(file.Name);
+                outputBody.Append("<a href ='#" + name + "'>" + name + "</a><br/>");
             }
 
+            foreach (var file in goodFiles)
+            {
+                string content = TextFromWord(file.FullName);
+
+                //Cleanup content
+                Regex.Replace(content, @"(\r\n){2,}", "\r\n\r\n");
+                content = content.Replace(Environment.NewLine + Environment.NewLine, Environment.NewLine);
+
+                //Encode for HTML
+                content = HttpUtility.HtmlEncode(content).Replace("\n", "<br/>");
+
+                //Add headers and metadata
+                outputBody.Append("<a name = '" + Path.GetFileNameWithoutExtension(file.Name) + "'>");
+                outputBody.Append("<h1>");
+                outputBody.Append(Path.GetFileNameWithoutExtension(file.Name));
+                outputBody.Append("</h1>");
+                outputBody.Append("<p>Created: " + file.CreationTime + "</p>");
+                outputBody.Append("<p>Edited: " + file.LastWriteTime + "</p>");
+                outputBody.Append("<a href ='"+ file.FullName + "'>" + file.FullName + "</a>");
+
+                //Add body
+                outputBody.Append("<pre>" + content + "</pre>");
+
+
+                outputBody.Append("<hr>");
+            }
+
+            var html = "<html><body>" + outputBody.ToString() + "</html></body>";
+            File.WriteAllText(@"C:\temp\doc.html",html);
+            Process.Start(@"cmd.exe ", @"/c " + @"C:\temp\doc.html");
         }
 
         public static string TextFromWord(string file)
